@@ -4,7 +4,7 @@ A storage consumption monitor for [Kasten K10](https://www.kasten.io/) that prov
 
 Kasten's built-in dashboard has no long-term storage visibility. This application fills that gap by querying Kasten's internal Prometheus for live metrics, storing daily snapshots in SQLite for multi-year trending, and supplementing with direct VBR REST API data for Veeam-backed repositories.
 
-![Dashboard Screenshot](docs/screenshot.png)
+![Dashboard Screenshot](screenshot.png)
 
 ---
 
