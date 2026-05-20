@@ -1,0 +1,230 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kasten-metrics-model
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kasten-metrics-model
+  namespace: kasten-metrics-model
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kasten-metrics-model
+rules:
+  - apiGroups: ["config.kio.kasten.io"]
+    resources: ["profiles", "policies"]
+    verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kasten-metrics-model
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kasten-metrics-model
+subjects:
+  - kind: ServiceAccount
+    name: kasten-metrics-model
+    namespace: kasten-metrics-model
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kasten-metrics-model-anyuid
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:anyuid
+subjects:
+  - kind: ServiceAccount
+    name: kasten-metrics-model
+    namespace: kasten-metrics-model
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kasten-metrics-db
+  namespace: kasten-metrics-model
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: rook-ceph-block
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vbr-credentials
+  namespace: kasten-metrics-model
+type: Opaque
+stringData:
+  url: "https://192.168.1.153:9419"
+  username: "veeamadmin"
+  password: "d2w&PA5B$xjDow2"
+  repo_map: "VBR=vbr,SOBR=vbr-sobr"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kasten-metrics-model
+  namespace: kasten-metrics-model
+  labels:
+    app: kasten-metrics-model
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kasten-metrics-model
+  template:
+    metadata:
+      labels:
+        app: kasten-metrics-model
+    spec:
+      serviceAccountName: kasten-metrics-model
+      containers:
+        - name: app
+          image: harbor.apps.openshift2.lab.home/kasten-metrics-model/kasten-metrics-model:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: PROMETHEUS_URL
+              value: "http://prometheus-server.kasten-io.svc/k10/prometheus"
+            - name: KASTEN_NAMESPACE
+              value: "kasten-io"
+            - name: DB_PATH
+              value: "/data/metrics.db"
+          volumeMounts:
+            - name: db
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: db
+          persistentVolumeClaim:
+            claimName: kasten-metrics-db
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kasten-metrics-model
+  namespace: kasten-metrics-model
+spec:
+  selector:
+    app: kasten-metrics-model
+  ports:
+    - port: 80
+      targetPort: 8000
+
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: kasten-metrics-model
+  namespace: kasten-metrics-model
+spec:
+  to:
+    kind: Service
+    name: kasten-metrics-model
+  port:
+    targetPort: 8000
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kasten-metrics-scraper
+  namespace: kasten-metrics-model
+spec:
+  schedule: "0 1 * * *"       # 01:00 UTC daily
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          serviceAccountName: kasten-metrics-model
+          restartPolicy: OnFailure
+          containers:
+            - name: scraper
+              image: harbor.apps.openshift2.lab.home/kasten-metrics-model/kasten-metrics-model:latest
+              command: ["python", "/app/scraper.py"]
+              env:
+                - name: PROMETHEUS_URL
+                  value: "http://prometheus-server.kasten-io.svc/k10/prometheus"
+                - name: KASTEN_NAMESPACE
+                  value: "kasten-io"
+                - name: DB_PATH
+                  value: "/data/metrics.db"
+                - name: RETENTION_DAYS
+                  value: "1825"
+                - name: VBR_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: vbr-credentials
+                      key: url
+                - name: VBR_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: vbr-credentials
+                      key: username
+                - name: VBR_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: vbr-credentials
+                      key: password
+                - name: VBR_REPO_MAP
+                  valueFrom:
+                    secretKeyRef:
+                      name: vbr-credentials
+                      key: repo_map
+              volumeMounts:
+                - name: db
+                  mountPath: /data
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 128Mi
+          volumes:
+            - name: db
+              persistentVolumeClaim:
+                claimName: kasten-metrics-db

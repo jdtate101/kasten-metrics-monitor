@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kasten · Storage Consumption</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<style>
+:root {
+  --bg:        #0d0d0d;
+  --bg2:       #141414;
+  --bg3:       #1a1a1a;
+  --border:    #2a2a2a;
+  --orange:    #ff6a00;
+  --orange2:   #ff8c00;
+  --orange3:   #ffaa44;
+  --dim:       #555;
+  --text:      #e0e0e0;
+  --text2:     #999;
+  --green:     #39ff14;
+  --red:       #ff3c3c;
+  --blue:      #4fc3f7;
+  --mono:      'Share Tech Mono', monospace;
+  --head:      'Rajdhani', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--bg2);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  font-family: var(--head);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--orange);
+  text-transform: uppercase;
+}
+
+.logo span { color: var(--text2); font-weight: 400; }
+
+.header-sub {
+  font-size: 0.7rem;
+  color: var(--dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.refresh-btn {
+  background: none;
+  border: 1px solid var(--orange);
+  color: var(--orange);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  padding: 6px 14px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+}
+.refresh-btn:hover { background: var(--orange); color: #000; }
+
+.timestamp {
+  font-size: 0.7rem;
+  color: var(--dim);
+}
+
+/* ── Layout ── */
+.main {
+  padding: 24px 28px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* ── Summary row ── */
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--orange);
+}
+
+.stat-label {
+  font-size: 0.65rem;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-family: var(--head);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--orange);
+  line-height: 1;
+}
+
+.stat-sub {
+  font-size: 0.7rem;
+  color: var(--text2);
+  margin-top: 6px;
+}
+
+/* ── Section header ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-title {
+  font-family: var(--head);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--orange2);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.section-tag {
+  font-size: 0.65rem;
+  color: var(--dim);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  letter-spacing: 1px;
+}
+
+/* ── Chart panels ── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.chart-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 20px;
+}
+
+.chart-title {
+  font-size: 0.7rem;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.chart-wrap {
+  position: relative;
+  height: 280px;
+}
+
+/* ── Profile table ── */
+.profiles-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  margin-bottom: 28px;
+}
+
+.profiles-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.profiles-table th {
+  font-size: 0.65rem;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+  font-weight: 400;
+}
+
+.profiles-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.profiles-table tr:last-child td { border-bottom: none; }
+
+.profiles-table tr {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.profiles-table tr:hover td { background: var(--bg3); }
+.profiles-table tr.active td { background: #1f1200; }
+
+.profile-name {
+  color: var(--orange2);
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  padding: 2px 6px;
+  border: 1px solid;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.badge-s3 { color: #4fc3f7; border-color: #4fc3f7; }
+.badge-gcs { color: #81c784; border-color: #81c784; }
+.badge-nfs { color: #ffb74d; border-color: #ffb74d; }
+.badge-vbr { color: #ce93d8; border-color: #ce93d8; }
+.badge-local { color: var(--dim); border-color: var(--border); }
+
+.bar-cell { width: 180px; }
+.bar-bg {
+  background: var(--bg3);
+  height: 6px;
+  border-radius: 0;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--orange), var(--orange3));
+  transition: width 0.6s ease;
+}
+
+.ratio {
+  font-size: 0.75rem;
+}
+.ratio-good { color: var(--green); }
+.ratio-ok { color: var(--orange3); }
+.ratio-flat { color: var(--text2); }
+
+.growth-up { color: var(--red); }
+.growth-down { color: var(--green); }
+.growth-flat { color: var(--text2); }
+
+/* ── Detail panel ── */
+.detail-panel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  margin-bottom: 28px;
+  display: none;
+}
+.detail-panel.visible { display: block; }
+
+.detail-header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detail-title {
+  font-family: var(--head);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--orange);
+}
+
+.detail-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+}
+.detail-close:hover { color: var(--text); }
+
+.detail-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 20px;
+}
+
+.detail-chart-wrap { height: 240px; position: relative; }
+
+.apps-list { font-size: 0.75rem; }
+.apps-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.apps-list-item:last-child { border-bottom: none; }
+.app-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.app-name { color: var(--text); flex: 1; }
+.app-size { color: var(--text2); }
+
+/* ── Loading / error ── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--dim);
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+}
+
+.error-msg {
+  color: var(--red);
+  font-size: 0.8rem;
+  padding: 12px 16px;
+  border: 1px solid var(--red);
+  margin-bottom: 16px;
+}
+
+.spinner::after {
+  content: '▋';
+  animation: blink 0.8s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ── Forecast toggle ── */
+.forecast-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.fc-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  padding: 4px 10px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+}
+.fc-btn.active, .fc-btn:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+/* ── Range selector ── */
+.range-btns { display: flex; gap: 6px; }
+.range-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.12s;
+}
+.range-btn.active, .range-btn:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="logo">KASTEN <span>/</span> METRICS</div>
+    <div class="header-sub">Storage Consumption Monitor</div>
+  </div>
+  <div class="header-right">
+    <div class="timestamp" id="ts">--</div>
+    <button class="refresh-btn" onclick="loadAll()">↺ REFRESH</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <div id="error-banner" class="error-msg" style="display:none"></div>
+
+  <!-- Summary cards -->
+  <div class="summary-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Export Storage</div>
+      <div class="stat-value" id="s-total-phys">—</div>
+      <div class="stat-sub" id="s-total-phys-sub">physical on disk</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Logical Data Size</div>
+      <div class="stat-value" id="s-total-log">—</div>
+      <div class="stat-sub">before dedup / compression</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Dedup Ratio</div>
+      <div class="stat-value" id="s-ratio">—</div>
+      <div class="stat-sub">logical ÷ physical</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Export Profiles</div>
+      <div class="stat-value" id="s-profiles">—</div>
+      <div class="stat-sub">active locations</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">History Since</div>
+      <div class="stat-value" id="s-since" style="font-size:1.2rem">—</div>
+      <div class="stat-sub">oldest stored record</div>
+    </div>
+  </div>
+
+  <!-- History chart -->
+  <div class="section-header">
+    <div class="section-title">Consumption History</div>
+    <div class="section-tag">30-DAY WINDOW</div>
+    <div class="forecast-controls">
+      <span style="font-size:0.65rem;color:var(--dim);letter-spacing:1px">RANGE:</span>
+      <div class="range-btns">
+        <button class="range-btn" data-days="7">7D</button>
+        <button class="range-btn" data-days="30">30D</button>
+        <button class="range-btn active" data-days="90">90D</button>
+        <button class="range-btn" data-days="180">6M</button>
+        <button class="range-btn" data-days="365">1Y</button>
+        <button class="range-btn" data-days="1825">5Y</button>
+      </div>
+      <button class="fc-btn" id="fc-toggle">+ FORECAST</button>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-panel">
+      <div class="chart-title">Physical Storage Per Profile (bytes)</div>
+      <div class="chart-wrap"><canvas id="history-chart"></canvas></div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-title">Current Distribution</div>
+      <div class="chart-wrap"><canvas id="donut-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Profile table -->
+  <div class="section-header">
+    <div class="section-title">Export Profiles</div>
+    <div class="section-tag" id="profile-count-tag">— LOCATIONS</div>
+  </div>
+
+  <div class="profiles-panel">
+    <div id="profiles-loading" class="loading"><span class="spinner"></span>&nbsp;LOADING PROFILES</div>
+    <table class="profiles-table" id="profiles-table" style="display:none">
+      <thead>
+        <tr>
+          <th>Profile</th>
+          <th>Type</th>
+          <th>Physical Size</th>
+          <th>Logical Size</th>
+          <th>Usage</th>
+          <th>Dedup Ratio</th>
+          <th>7D Growth</th>
+        </tr>
+      </thead>
+      <tbody id="profiles-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Detail panel (shown on row click) -->
+  <div class="detail-panel" id="detail-panel">
+    <div class="detail-header">
+      <div class="detail-title" id="detail-title">—</div>
+      <button class="detail-close" onclick="closeDetail()">✕ CLOSE</button>
+    </div>
+    <div class="detail-body">
+      <div>
+        <div class="chart-title">30-Day History + Forecast</div>
+        <div class="detail-chart-wrap"><canvas id="detail-chart"></canvas></div>
+      </div>
+      <div>
+        <div class="chart-title">App Breakdown</div>
+        <div id="apps-list" class="apps-list">
+          <div class="loading" style="height:100px"><span class="spinner"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const PALETTE = [
+  '#ff6a00','#4fc3f7','#81c784','#ffb74d','#ce93d8',
+  '#f06292','#4db6ac','#aed581','#ff8a65','#90caf9',
+  '#ffe082','#80cbc4','#ef9a9a','#b39ddb','#80deea'
+];
+
+let historyChart = null;
+let donutChart = null;
+let detailChart = null;
+let summaryData = null;
+let historyData = null;
+let selectedRange = 90;
+let forecastActive = false;
+let selectedProfile = null;
+
+// ── Init ────────────────────────────────────────────────────────────────────
+
+async function loadAll() {
+  updateTimestamp();
+  await Promise.all([loadSummary(), loadHistory(selectedRange)]);
+}
+
+async function loadSummary() {
+  try {
+    const r = await fetch('/api/summary');
+    if (!r.ok) throw new Error(await r.text());
+    summaryData = await r.json();
+    renderSummaryCards(summaryData);
+    renderProfiles(summaryData);
+    renderDonut(summaryData.profiles);
+    hideError();
+  } catch(e) {
+    showError('Summary load failed: ' + e.message);
+  }
+}
+
+async function loadHistory(days) {
+  const step = days <= 7 ? '1h' : days <= 30 ? '6h' : '1d';
+  try {
+    const r = await fetch(`/api/history?days=${days}&step=${step}`);
+    if (!r.ok) throw new Error(await r.text());
+    historyData = await r.json();
+    renderHistoryChart(historyData);
+  } catch(e) {
+    showError('History load failed: ' + e.message);
+  }
+}
+
+// ── Summary cards ───────────────────────────────────────────────────────────
+
+function renderSummaryCards(d) {
+  setText('s-total-phys', d.total_physical_human);
+  setText('s-total-log', d.total_logical_human);
+  setText('s-ratio', d.overall_dedup_ratio.toFixed(2) + 'x');
+  setText('s-profiles', d.profile_count);
+  setText('s-since', d.history_since || 'No DB data yet');
+  document.getElementById('profile-count-tag').textContent =
+    d.profile_count + ' LOCATIONS';
+}
+
+// ── Profile table ───────────────────────────────────────────────────────────
+
+function renderProfiles(d) {
+  const profiles = d.profiles;
+  const growth = d.growth_7d || {};
+  const maxBytes = Math.max(...profiles.map(p => p.physical_bytes), 1);
+
+  const tbody = document.getElementById('profiles-tbody');
+  tbody.innerHTML = '';
+
+  profiles.forEach((p, i) => {
+    const pct = (p.physical_bytes / maxBytes * 100).toFixed(1);
+    const g = growth[p.profile] || {};
+    const ratio = p.dedup_ratio;
+
+    const ratioClass = ratio > 1.5 ? 'ratio-good' : ratio > 1.05 ? 'ratio-ok' : 'ratio-flat';
+    const badge = typeBadge(p.object_store_type, p.endpoint);
+
+    const growthDir = g.direction === 'up' ? 'growth-up' :
+                      g.direction === 'down' ? 'growth-down' : 'growth-flat';
+    const growthSym = g.direction === 'up' ? '↑' : g.direction === 'down' ? '↓' : '—';
+    const growthTxt = g.pct_7d !== undefined ?
+      `${growthSym} ${Math.abs(g.pct_7d)}%` : '—';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><span class="profile-name">${p.profile}</span>${badge}</td>
+      <td style="color:var(--text2);font-size:0.75rem">${p.object_store_type || (p.endpoint ? 'S3-compat' : 'NFS/VBR')}</td>
+      <td style="color:var(--text)">${p.physical_human}</td>
+      <td style="color:var(--text2)">${p.logical_human}</td>
+      <td class="bar-cell">
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <span style="font-size:0.65rem;color:var(--dim)">${pct}%</span>
+      </td>
+      <td><span class="ratio ${ratioClass}">${ratio.toFixed(2)}x</span></td>
+      <td><span class="${growthDir}">${growthTxt}</span></td>
+    `;
+    tr.onclick = () => selectProfile(p.profile, tr);
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('profiles-loading').style.display = 'none';
+  document.getElementById('profiles-table').style.display = 'table';
+}
+
+function typeBadge(ost, ep) {
+  if (ost === 'S3') return '<span class="badge badge-s3">S3</span>';
+  if (ost === 'GCS') return '<span class="badge badge-gcs">GCS</span>';
+  if (ep && ep.includes('wasabi')) return '<span class="badge badge-s3">WASABI</span>';
+  if (ep) return '<span class="badge badge-s3">S3</span>';
+  return '<span class="badge badge-nfs">NFS/VBR</span>';
+}
+
+// ── History chart ───────────────────────────────────────────────────────────
+
+function renderHistoryChart(data) {
+  const profiles = Object.keys(data);
+  const datasets = profiles.map((name, i) => {
+    const pts = data[name].map(p => ({ x: p.ts * 1000, y: p.bytes }));
+    return {
+      label: name,
+      data: pts,
+      borderColor: PALETTE[i % PALETTE.length],
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0.3,
+    };
+  });
+
+  if (historyChart) historyChart.destroy();
+  historyChart = new Chart(document.getElementById('history-chart'), {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: {
+          labels: {
+            color: '#999', font: { family: "'Share Tech Mono'", size: 10 },
+            boxWidth: 12, padding: 8
+          }
+        },
+        tooltip: {
+          mode: 'index', intersect: false,
+          callbacks: {
+            label: ctx => ` ${ctx.dataset.label}: ${humanBytes(ctx.parsed.y)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'day', displayFormats: { day: 'MMM d' } },
+          ticks: { color: '#555', font: { family: "'Share Tech Mono'", size: 10 } },
+          grid: { color: '#1e1e1e' }
+        },
+        y: {
+          ticks: {
+            color: '#555', font: { family: "'Share Tech Mono'", size: 10 },
+            callback: v => humanBytes(v)
+          },
+          grid: { color: '#1e1e1e' }
+        }
+      }
+    }
+  });
+}
+
+// ── Donut chart ─────────────────────────────────────────────────────────────
+
+function renderDonut(profiles) {
+  const top = profiles.slice(0, 10);
+  const labels = top.map(p => p.profile);
+  const values = top.map(p => p.physical_bytes);
+  const colors = top.map((_, i) => PALETTE[i % PALETTE.length]);
+
+  if (donutChart) donutChart.destroy();
+  donutChart = new Chart(document.getElementById('donut-chart'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data: values, backgroundColor: colors, borderWidth: 1, borderColor: '#0d0d0d' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            color: '#999', font: { family: "'Share Tech Mono'", size: 9 },
+            boxWidth: 10, padding: 6
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${humanBytes(ctx.parsed)}`
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── Profile detail ───────────────────────────────────────────────────────────
+
+async function selectProfile(profile, tr) {
+  // Deselect previous
+  document.querySelectorAll('.profiles-table tr.active')
+    .forEach(r => r.classList.remove('active'));
+
+  if (selectedProfile === profile) {
+    closeDetail();
+    return;
+  }
+
+  selectedProfile = profile;
+  tr.classList.add('active');
+
+  document.getElementById('detail-title').textContent = profile;
+  document.getElementById('detail-panel').classList.add('visible');
+  document.getElementById('apps-list').innerHTML =
+    '<div class="loading" style="height:80px"><span class="spinner"></span></div>';
+
+  await Promise.all([loadDetailChart(profile), loadApps(profile)]);
+}
+
+function closeDetail() {
+  selectedProfile = null;
+  document.getElementById('detail-panel').classList.remove('visible');
+  document.querySelectorAll('.profiles-table tr.active')
+    .forEach(r => r.classList.remove('active'));
+}
+
+async function loadDetailChart(profile) {
+  try {
+    const r = await fetch(`/api/forecast/${encodeURIComponent(profile)}?days_ahead=30`);
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+
+    const histPts = d.historical.map(p => ({ x: p.ts * 1000, y: p.bytes }));
+    const fcPts = d.forecast.map(p => ({ x: p.ts * 1000, y: p.bytes }));
+
+    if (detailChart) detailChart.destroy();
+    detailChart = new Chart(document.getElementById('detail-chart'), {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            label: 'Historical',
+            data: histPts,
+            borderColor: '#ff6a00',
+            backgroundColor: 'rgba(255,106,0,0.08)',
+            borderWidth: 2,
+            pointRadius: 0,
+            fill: true,
+            tension: 0.3,
+          },
+          {
+            label: `Forecast (+30d)`,
+            data: fcPts,
+            borderColor: '#ffaa44',
+            backgroundColor: 'transparent',
+            borderWidth: 1.5,
+            borderDash: [4, 4],
+            pointRadius: 0,
+            tension: 0.3,
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: {
+            labels: {
+              color: '#999', font: { family: "'Share Tech Mono'", size: 10 },
+              boxWidth: 12
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: ctx => ` ${ctx.dataset.label}: ${humanBytes(ctx.parsed.y)}`
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: { unit: 'day', displayFormats: { day: 'MMM d' } },
+            ticks: { color: '#555', font: { family: "'Share Tech Mono'", size: 9 } },
+            grid: { color: '#1e1e1e' }
+          },
+          y: {
+            ticks: {
+              color: '#555', font: { family: "'Share Tech Mono'", size: 9 },
+              callback: v => humanBytes(v)
+            },
+            grid: { color: '#1e1e1e' }
+          }
+        }
+      }
+    });
+
+    // Update daily growth stat
+    document.getElementById('detail-title').textContent =
+      `${profile}  ·  +${d.daily_growth_human}/day`;
+  } catch(e) {
+    console.warn('Forecast failed:', e);
+  }
+}
+
+async function loadApps(profile) {
+  try {
+    const r = await fetch(`/api/apps/${encodeURIComponent(profile)}`);
+    if (!r.ok) throw new Error(await r.text());
+    const apps = await r.json();
+
+    const list = document.getElementById('apps-list');
+    if (!apps.length) {
+      list.innerHTML = '<div style="color:var(--dim);font-size:0.75rem;padding:8px 0">No per-app breakdown available</div>';
+      return;
+    }
+
+    const maxB = Math.max(...apps.map(a => a.bytes), 1);
+    list.innerHTML = apps.slice(0, 15).map((a, i) => `
+      <div class="apps-list-item">
+        <div class="app-dot" style="background:${PALETTE[i % PALETTE.length]}"></div>
+        <div class="app-name">${a.app}</div>
+        <div style="flex:1;margin:0 8px">
+          <div class="bar-bg"><div class="bar-fill" style="width:${(a.bytes/maxB*100).toFixed(1)}%;background:${PALETTE[i % PALETTE.length]}"></div></div>
+        </div>
+        <div class="app-size">${a.human}</div>
+      </div>
+    `).join('');
+  } catch(e) {
+    document.getElementById('apps-list').innerHTML =
+      `<div style="color:var(--red);font-size:0.75rem">Failed: ${e.message}</div>`;
+  }
+}
+
+// ── Range selector ──────────────────────────────────────────────────────────
+
+document.querySelectorAll('.range-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedRange = parseInt(btn.dataset.days);
+    loadHistory(selectedRange);
+  });
+});
+
+document.getElementById('fc-toggle').addEventListener('click', function() {
+  forecastActive = !forecastActive;
+  this.classList.toggle('active', forecastActive);
+  // Forecast on main chart: re-render with overlay if a profile is selected
+  if (forecastActive && selectedProfile) {
+    loadDetailChart(selectedProfile);
+  }
+});
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+
+function humanBytes(b) {
+  const units = ['B','KB','MB','GB','TB','PB'];
+  let i = 0;
+  while (b >= 1024 && i < units.length - 1) { b /= 1024; i++; }
+  return b.toFixed(2) + ' ' + units[i];
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function updateTimestamp() {
+  document.getElementById('ts').textContent =
+    'Updated ' + new Date().toLocaleTimeString();
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('error-banner').style.display = 'none';
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+
+loadAll();
+setInterval(loadAll, 300000); // auto-refresh every 5 min
+</script>
+</body>
+</html>
