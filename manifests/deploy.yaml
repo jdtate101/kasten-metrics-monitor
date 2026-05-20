@@ -72,8 +72,8 @@ metadata:
 type: Opaque
 stringData:
   url: "https://192.168.1.153:9419"
-  username: "veeamadmin"
-  password: "d2w&PA5B$xjDow2"
+  username: "xxxxxxxxxx"
+  password: "xxxxxxxxxxxxxxx"
   repo_map: "VBR=vbr,SOBR=vbr-sobr"
 
 ---
