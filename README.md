@@ -1,6 +1,6 @@
 # kasten-metrics-model
 
-A storage consumption monitor for [Kasten K10](https://www.kasten.io/) that provides historical trend analysis, dedup/compression ratios, per-profile breakdowns, and growth forecasting across all export locations — including S3, GCS, NFS, and Veeam VBR repositories.
+A storage consumption monitor for [Kasten K10]([https://www.kasten.io/](https://www.veeam.com/products/cloud/kubernetes-data-protection.html?ad=menu-products-data-resilience-workloads)) that provides historical trend analysis, dedup/compression ratios, per-profile breakdowns, and growth forecasting across all export locations — including S3, GCS, NFS, and Veeam VBR repositories.
 
 Kasten's built-in dashboard has no long-term storage visibility. This application fills that gap by querying Kasten's internal Prometheus for live metrics, storing daily snapshots in SQLite for multi-year trending, and supplementing with direct VBR REST API data for Veeam-backed repositories.
 
